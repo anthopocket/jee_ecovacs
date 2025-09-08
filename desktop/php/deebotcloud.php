@@ -1,11 +1,18 @@
 <?php
-/* desktop/php/deebotcloud.php */
-if (!isConnect()) {
+/* plugins/deebotcloud/desktop/php/deebotcloud.php */
+if (!isConnect('admin')) {
   throw new Exception('{{401 - Accès non autorisé}}');
 }
 $plugin = plugin::byId('deebotcloud');
-$eqLogics = eqLogic::byType($plugin->getId());
-sendVarToJS('eqType', $plugin->getId());
+$pluginId = $plugin->getId();
+$eqLogics = eqLogic::byType($pluginId);
+
+$mqtt_host = config::byKey('mqtt_host', $pluginId, '127.0.0.1');
+$mqtt_port = config::byKey('mqtt_port', $pluginId, '1883');
+$mqtt_user = config::byKey('mqtt_user', $pluginId, '');
+$mqtt_pass = config::byKey('mqtt_pass', $pluginId, '');
+
+sendVarToJS('eqType', $pluginId);
 ?>
 
 <div class="row row-overflow">
@@ -31,33 +38,33 @@ sendVarToJS('eqType', $plugin->getId());
     </div>
   </div>
 
-  <!-- ====== Colonne droite : fiche équipement ====== -->
-  <div class="col-xs-12 col-sm-8 col-md-9 eqLogic" style="display: none;" data-page="deebotcloud">
+  <!-- ====== Colonne droite : contenu ====== -->
+  <div class="col-xs-12 col-sm-8 col-md-9">
 
     <div class="input-group pull-right" style="margin-bottom:10px;">
       <span class="input-group-btn">
-        <a class="btn btn-default btn-sm eqLogicAction" data-action="configure">
-          <i class="fa fa-wrench"></i> {{Configuration du plugin}}
-        </a>
-        <a class="btn btn-warning btn-sm eqLogicAction" data-action="remove">
-          <i class="fa fa-trash"></i> {{Supprimer}}
+        <a class="btn btn-default btn-sm" id="bt_showPluginTab">
+          <i class="fa fa-plug"></i> {{Onglet Plugin}}
         </a>
         <a class="btn btn-success btn-sm eqLogicAction" data-action="save">
-          <i class="fa fa-check"></i> {{Sauvegarder}}
+          <i class="fa fa-check"></i> {{Sauvegarder l’équipement}}
+        </a>
+        <a class="btn btn-warning btn-sm eqLogicAction" data-action="remove">
+          <i class="fa fa-trash"></i> {{Supprimer l’équipement}}
         </a>
       </span>
     </div>
 
     <ul class="nav nav-tabs" role="tablist">
       <li role="presentation" class="active"><a href="#eqtab" role="tab" data-toggle="tab"><i class="fa fa-cube"></i> {{Équipement}}</a></li>
-      <li role="presentation"><a href="#configtab" role="tab" data-toggle="tab"><i class="fa fa-plug"></i> {{Configuration}}</a></li>
       <li role="presentation"><a href="#commandtab" role="tab" data-toggle="tab"><i class="fa fa-list"></i> {{Commandes}}</a></li>
+      <li role="presentation"><a href="#plugintab" role="tab" data-toggle="tab"><i class="fa fa-cogs"></i> {{Plugin}}</a></li>
     </ul>
 
     <div class="tab-content" style="padding-top:20px;">
 
-      <!-- ====== Onglet Équipement (général) ====== -->
-      <div role="tabpanel" class="tab-pane active" id="eqtab">
+      <!-- ====== Onglet Équipement ====== -->
+      <div role="tabpanel" class="tab-pane active eqLogic" id="eqtab" style="display:none;" data-page="deebotcloud">
         <form class="form-horizontal">
 
           <div class="form-group">
@@ -104,16 +111,8 @@ sendVarToJS('eqType', $plugin->getId());
             </div>
           </div>
 
-        </form>
-      </div>
-
-      <!-- ====== Onglet Configuration (connexions) ====== -->
-      <div role="tabpanel" class="tab-pane" id="configtab">
-        <form class="form-horizontal">
-
           <fieldset>
-            <legend>{{Robot Ecovacs}}</legend>
-
+            <legend>{{Paramètres de connexion (cet équipement)}}</legend>
             <div class="form-group">
               <label class="col-sm-3 control-label">{{DID du robot}}</label>
               <div class="col-sm-4">
@@ -121,41 +120,29 @@ sendVarToJS('eqType', $plugin->getId());
                        placeholder="{{ex: 12345678901234567890}}" />
               </div>
               <div class="col-sm-5 help-block">
-                {{Identifiant unique du robot (visible dans les logs du bridge / app Ecovacs). Obligatoire.}}
+                {{Obligatoire. Le plugin publie vers}} <code>deebot/&lt;DID&gt;/set</code>.
               </div>
             </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>{{Broker MQTT (Jeedom)}}</legend>
 
             <div class="form-group">
-              <label class="col-sm-3 control-label">{{Hôte}}</label>
+              <label class="col-sm-3 control-label">{{MQTT Hôte}}</label>
               <div class="col-sm-3">
-                <input class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="mqtt_host" placeholder="127.0.0.1" />
+                <input class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="mqtt_host" placeholder="127.0.0.1" value="<?php echo htmlspecialchars($mqtt_host); ?>"/>
               </div>
-
-              <label class="col-sm-2 control-label">{{Port}}</label>
+              <label class="col-sm-2 control-label">{{MQTT Port}}</label>
               <div class="col-sm-2">
-                <input class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="mqtt_port" placeholder="1883" />
+                <input class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="mqtt_port" placeholder="1883" value="<?php echo htmlspecialchars($mqtt_port); ?>"/>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="col-sm-3 control-label">{{Utilisateur}}</label>
+              <label class="col-sm-3 control-label">{{MQTT Utilisateur}}</label>
               <div class="col-sm-3">
-                <input class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="mqtt_user" />
+                <input class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="mqtt_user" value="<?php echo htmlspecialchars($mqtt_user); ?>"/>
               </div>
-
-              <label class="col-sm-2 control-label">{{Mot de passe}}</label>
+              <label class="col-sm-2 control-label">{{MQTT Mot de passe}}</label>
               <div class="col-sm-3">
-                <input class="eqLogicAttr form-control" type="password" data-l1key="configuration" data-l2key="mqtt_pass" />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <div class="col-sm-9 col-sm-offset-3 help-block">
-                {{Le plugin publie les commandes sur }}<code>deebot/&lt;DID&gt;/set</code>{{ et peut recevoir l’état sur }}<code>deebot/&lt;DID&gt;/state</code>{{ via jMQTT ou un webhook.}}
+                <input class="eqLogicAttr form-control" type="password" data-l1key="configuration" data-l2key="mqtt_pass" value="<?php echo htmlspecialchars($mqtt_pass); ?>"/>
               </div>
             </div>
           </fieldset>
@@ -165,9 +152,6 @@ sendVarToJS('eqType', $plugin->getId());
 
       <!-- ====== Onglet Commandes ====== -->
       <div role="tabpanel" class="tab-pane" id="commandtab">
-        <a class="btn btn-default btn-sm pull-right" id="bt_addDeebotCmd" style="margin-bottom:10px;">
-          <i class="fa fa-plus"></i> {{Ajouter une commande (optionnel)}}
-        </a>
         <table id="table_cmd" class="table table-bordered table-condensed">
           <thead>
             <tr>
@@ -179,82 +163,231 @@ sendVarToJS('eqType', $plugin->getId());
               <th style="width:100px;">{{Actions}}</th>
             </tr>
           </thead>
-          <tbody>
-            <?php
-            /** @var eqLogic $eqLogic */
-            $eqLogic = eqLogic::byId(init('id'));
-            if (is_object($eqLogic)) {
-              foreach ($eqLogic->getCmd() as $cmd) {
-                echo $cmd->toHtml();
-              }
-            }
-            ?>
-          </tbody>
+          <tbody></tbody>
         </table>
+      </div>
+
+      <!-- ====== Onglet Plugin (config MQTT + découverte) ====== -->
+      <div role="tabpanel" class="tab-pane" id="plugintab">
+        <form class="form-horizontal">
+
+          <fieldset>
+            <legend>{{Configuration MQTT (globale plugin)}}</legend>
+            <div class="form-group">
+              <label class="col-sm-3 control-label">{{Hôte}}</label>
+              <div class="col-sm-3">
+                <input id="cfg_mqtt_host" class="form-control" value="<?php echo htmlspecialchars($mqtt_host); ?>" placeholder="127.0.0.1"/>
+              </div>
+
+              <label class="col-sm-2 control-label">{{Port}}</label>
+              <div class="col-sm-2">
+                <input id="cfg_mqtt_port" class="form-control" value="<?php echo htmlspecialchars($mqtt_port); ?>" placeholder="1883"/>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="col-sm-3 control-label">{{Utilisateur}}</label>
+              <div class="col-sm-3">
+                <input id="cfg_mqtt_user" class="form-control" value="<?php echo htmlspecialchars($mqtt_user); ?>"/>
+              </div>
+
+              <label class="col-sm-2 control-label">{{Mot de passe}}</label>
+              <div class="col-sm-3">
+                <input id="cfg_mqtt_pass" class="form-control" type="password" value="<?php echo htmlspecialchars($mqtt_pass); ?>"/>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="col-sm-9 col-sm-offset-3">
+                <a class="btn btn-success" id="bt_save_mqtt">
+                  <i class="fa fa-save"></i> {{Enregistrer la configuration MQTT}}
+                </a>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>{{Découverte automatique (topics retained)}} <code>deebot/+/state</code></legend>
+            <div class="form-group">
+              <div class="col-sm-9 col-sm-offset-3">
+                <a class="btn btn-primary" id="bt_deebot_discover">
+                  <i class="fa fa-search"></i> {{Lancer la découverte}}
+                </a>
+                <span id="deebot_discover_spinner" style="margin-left:10px; display:none;">
+                  <i class="fa fa-spinner fa-spin"></i> {{Scan en cours (2–3 s)…}}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="col-sm-12">
+                <table class="table table-bordered" id="tb_deebot_discovered" style="display:none;">
+                  <thead>
+                    <tr>
+                      <th>{{DID}}</th>
+                      <th>{{Nom (si fourni)}}</th>
+                      <th>{{Batterie}}</th>
+                      <th>{{Statut brut}}</th>
+                      <th style="width:150px;">{{Action}}</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </fieldset>
+
+        </form>
       </div>
 
     </div><!-- /.tab-content -->
 
-    <script>
-      // Bouton Ajouter équipement
-      $('#bt_addEqLogic').off('click').on('click', function () {
-        jeedom.eqLogic.save({
-          type: '<?php echo $plugin->getId(); ?>',
-          eqLogics: [ { name: '{{Nouveau Deebot}}', isEnable: 1, isVisible: 1 } ],
-          error: function (error) { $('#div_alert').showAlert({message: error.message, level: 'danger'}); },
-          success: function () { location.reload(); }
-        });
-      });
-
-      // Ajouter une ligne de commande vide (facultatif, pour du custom)
-      $('#bt_addDeebotCmd').on('click', function () {
-        addCmdToTable({type: 'action', subType: 'other', name: 'Custom'});
-      });
-
-      // Affichage/chargement de l’équipement sélectionné
-      $('.li_eqLogic').off('click').on('click', function () {
-        var eqId = $(this).data('eqlogic_id');
-        jeedom.eqLogic.print({
-          type: '<?php echo $plugin->getId(); ?>',
-          id: eqId,
-          status: 1,
-          error: function (error) { $('#div_alert').showAlert({message: error.message, level: 'danger'}); },
-          success: function (data) {
-            $('.eqLogic').show().setValues(data, '.eqLogic');
-            if (isset(data.category)) {
-              for (const i in data.category) {
-                $('.eqLogic .eqLogicAttr[data-l1key=category][data-l2key=' + i + ']').prop('checked', data.category[i] == 1);
-              }
-            }
-            // recharge le tableau des commandes
-            $('#table_cmd tbody').empty();
-            for (const i in data.cmd) {
-              addCmdToTable(data.cmd[i]);
-            }
-          }
-        });
-      });
-
-      // Helpers jeedom
-      function addCmdToTable(_cmd) {
-        if (!isset(_cmd)) _cmd = {configuration: {}};
-        var tr = '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">';
-        tr += '<td><span class="cmdAttr" data-l1key="id"></span></td>';
-        tr += '<td><input class="cmdAttr form-control input-sm" data-l1key="name" placeholder="{{Nom}}"></td>';
-        tr += '<td><span class="type"></span><input class="cmdAttr" data-l1key="type" value="' + (init(_cmd.type) || 'action') + '" style="display:none;"></td>';
-        tr += '<td><select class="cmdAttr form-control input-sm" data-l1key="subType"><option value="other">other</option><option value="other">other</option></select></td>';
-        tr += '<td></td>';
-        tr += '<td>';
-        tr += '<a class="btn btn-success btn-xs cmdAction" data-action="save"><i class="fa fa-floppy-o"></i></a> ';
-        tr += '<a class="btn btn-danger btn-xs cmdAction" data-action="remove"><i class="fa fa-trash"></i></a>';
-        tr += '</td>';
-        tr += '</tr>';
-        $('#table_cmd tbody').append(tr);
-        $('#table_cmd tbody tr:last').setValues(_cmd, '.cmdAttr');
-        jeedom.cmd.changeType($('#table_cmd tbody tr:last'), init(_cmd.subType));
-      }
-    </script>
-
-  </div><!-- /.eqLogic -->
+  </div><!-- /.col droite -->
 
 </div>
+
+<script>
+/* ===== Helpers ===== */
+function addCmdToTable(_cmd) {
+  if (!isset(_cmd)) _cmd = {configuration: {}};
+  var tr = '<tr class="cmd" data-cmd_id="' + init(_cmd.id) + '">';
+  tr += '<td><span class="cmdAttr" data-l1key="id"></span></td>';
+  tr += '<td><input class="cmdAttr form-control input-sm" data-l1key="name" placeholder="{{Nom}}"></td>';
+  tr += '<td><span class="type"></span><input class="cmdAttr" data-l1key="type" value="' + (init(_cmd.type) || 'action') + '" style="display:none;"></td>';
+  tr += '<td><select class="cmdAttr form-control input-sm" data-l1key="subType"><option value="other">other</option></select></td>';
+  tr += '<td></td>';
+  tr += '<td>';
+  tr += '<a class="btn btn-success btn-xs cmdAction" data-action="save"><i class="fa fa-floppy-o"></i></a> ';
+  tr += '<a class="btn btn-danger btn-xs cmdAction" data-action="remove"><i class="fa fa-trash"></i></a>';
+  tr += '</td>';
+  tr += '</tr>';
+  $('#table_cmd tbody').append(tr);
+  $('#table_cmd tbody tr:last').setValues(_cmd, '.cmdAttr');
+  jeedom.cmd.changeType($('#table_cmd tbody tr:last'), init(_cmd.subType));
+}
+
+/* ===== UI : navigation ===== */
+$('#bt_addEqLogic').on('click', function () {
+  jeedom.eqLogic.save({
+    type: '<?php echo $pluginId; ?>',
+    eqLogics: [ { name: '{{Nouveau Deebot}}', isEnable: 1, isVisible: 1 } ],
+    error: function (e) { $('#div_alert').showAlert({message: e.message, level: 'danger'}); },
+    success: function () { location.reload(); }
+  });
+});
+
+$('.li_eqLogic').on('click', function () {
+  var eqId = $(this).data('eqlogic_id');
+  jeedom.eqLogic.print({
+    type: '<?php echo $pluginId; ?>',
+    id: eqId,
+    status: 1,
+    error: function (e) { $('#div_alert').showAlert({message: e.message, level: 'danger'}); },
+    success: function (data) {
+      $('.eqLogic').show().setValues(data, '.eqLogic');
+      if (isset(data.category)) {
+        for (const i in data.category) {
+          $('.eqLogic .eqLogicAttr[data-l1key=category][data-l2key=' + i + ']').prop('checked', data.category[i] == 1);
+        }
+      }
+      $('#table_cmd tbody').empty();
+      for (const i in data.cmd) {
+        addCmdToTable(data.cmd[i]);
+      }
+      $('a[href="#eqtab"]').tab('show');
+    }
+  });
+});
+
+$('#bt_showPluginTab').on('click', function(){
+  $('a[href="#plugintab"]').tab('show');
+});
+
+/* ===== Plugin config : save via API ===== */
+$('#bt_save_mqtt').on('click', function () {
+  const data = {
+    mqtt_host: $('#cfg_mqtt_host').val(),
+    mqtt_port: $('#cfg_mqtt_port').val(),
+    mqtt_user: $('#cfg_mqtt_user').val(),
+    mqtt_pass: $('#cfg_mqtt_pass').val()
+  };
+  jeedom.config.save({
+    plugin: '<?php echo $pluginId; ?>',
+    configuration: data,
+    error: function (e) { $('#div_alert').showAlert({message: e.message, level: 'danger'}); },
+    success: function () { $('#div_alert').showAlert({message: '{{Configuration MQTT enregistrée}}', level: 'success'}); }
+  });
+});
+
+/* ===== Découverte MQTT ===== */
+$('#bt_deebot_discover').on('click', function () {
+  $('#deebot_discover_spinner').show();
+  $('#tb_deebot_discovered').hide();
+  $('#tb_deebot_discovered tbody').empty();
+
+  $.ajax({
+    type: 'POST',
+    url: 'plugins/deebotcloud/core/ajax/deebotcloud.ajax.php',
+    data: { action: 'discover' },
+    dataType: 'json',
+    error: function (req, status, err) {
+      $('#deebot_discover_spinner').hide();
+      $('#div_alert').showAlert({message: err, level: 'danger'});
+    },
+    success: function (data) {
+      $('#deebot_discover_spinner').hide();
+      if (data.state != 'ok') {
+        $('#div_alert').showAlert({message: data.result, level: 'danger'});
+        return;
+      }
+      const list = data.result || [];
+      if (list.length === 0) {
+        $('#div_alert').showAlert({message: '{{Aucun robot détecté. Vérifie que le bridge publie un message retained sur}} deebot/+/state', level: 'warning'});
+        return;
+      }
+      for (const dev of list) {
+        const did = dev.did || '';
+        const name = dev.name || '';
+        const batt = (dev.battery !== undefined && dev.battery !== null) ? dev.battery : '';
+        const st   = (dev.status !== undefined && dev.status !== null) ? JSON.stringify(dev.status) : '';
+        const $tr = $('<tr/>');
+        $tr.append('<td><code>'+did+'</code></td>');
+        $tr.append('<td>'+$('<div/>').text(name).html()+'</td>');
+        $tr.append('<td>'+batt+'</td>');
+        $tr.append('<td style="max-width:360px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'+$('<div/>').text(st).html()+'</td>');
+        const $btn = $('<a class="btn btn-success btn-xs"><i class="fa fa-plus"></i> {{Créer l\'équipement}}</a>');
+        $btn.on('click', function () {
+          $.ajax({
+            type: 'POST',
+            url: 'plugins/deebotcloud/core/ajax/deebotcloud.ajax.php',
+            data: { action: 'createEq', did: did, name: (name || ('Deebot '+did.slice(-4))) },
+            dataType: 'json',
+            error: function (r,s,e) {
+              $('#div_alert').showAlert({message: e, level: 'danger'});
+            },
+            success: function (resp) {
+              if (resp.state != 'ok') {
+                $('#div_alert').showAlert({message: resp.result, level: 'danger'});
+                return;
+              }
+              $('#div_alert').showAlert({message: '{{Équipement créé}}', level: 'success'});
+            }
+          });
+        });
+        const $td = $('<td/>').append($btn);
+        $tr.append($td);
+        $('#tb_deebot_discovered tbody').append($tr);
+      }
+      $('#tb_deebot_discovered').show();
+      $('a[href="#plugintab"]').tab('show');
+    }
+  });
+});
+
+/* ===== Affichage par défaut ===== */
+$(function(){
+  // Affiche la vue équipement vide si rien n'est sélectionné
+  $('.eqLogic').show();
+  $('a[href="#eqtab"]').tab('show');
+});
+</script>
