@@ -5,7 +5,7 @@
   "licence": "AGPL",
   "author": "toi",
   "require": "4.4",
-  "category": "device",
+  "category": "devicecommunication",
   "hasOwnDeamon": false,
   "maxDependancyInstallTime": 0,
   "changelog": "https://",
