@@ -1,0 +1,15 @@
+{
+  "id": "deebotcloud",
+  "name": "Deebot Cloud",
+  "description": "Contrôle Ecovacs (cloud) via bridge MQTT",
+  "licence": "AGPL",
+  "author": "toi",
+  "require": "4.4",
+  "category": "device",
+  "hasOwnDeamon": false,
+  "maxDependancyInstallTime": 0,
+  "changelog": "https://",
+  "documentation": "https://",
+  "languages": ["fr_FR"],
+  "service": "local"
+}
